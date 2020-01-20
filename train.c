@@ -20,28 +20,25 @@ double gaussrand(){
 	static double V1, V2, S;
 	static int phase = 0;
 	double X;
-
 	if(phase == 0) {
 		do {
 			double U1 = (double)rand() / RAND_MAX;
 			double U2 = (double)rand() / RAND_MAX;
-
-			V1 = 2 * U1 - 1;
+            V1 = 2 * U1 - 1;
 			V2 = 2 * U2 - 1;
 			S = V1 * V1 + V2 * V2;
-			} while(S >= 1 || S == 0);
+		} while(S >= 1 || S == 0);
 
 		X = V1 * sqrt(-2 * log(S) / S);
-	} else
-		X = V2 * sqrt(-2 * log(S) / S);
-
+	} else X = V2 * sqrt(-2 * log(S) / S);
 	phase = 1 - phase;
-
 	return X;
 }
 
-void forward(){
+double forward(double batch_image[][SIZE], int batch_label[]){
+    double error;
 
+    return error;
 }
 
 void backward(){
@@ -92,6 +89,24 @@ int main(int argc, char* argv[]){
     	for(int j=0; j<neurons[i]; j++)
     		for(int k=0; k<neurons[i-1]; k++)
     			network.weights[i][j][k] = gaussrand();
+    }
+
+    for(int i=0; i<num_epochs; i++){
+        int num_batches = NUM_TRAIN / batch_size ;
+
+        for(int j=0; j<num_batches; j++){
+            double batch_image[batch_size][SIZE];
+            int batch_label[batch_size];
+
+            for(int k=0; k<batch_size; k++){
+                batch_label[k] = train_label[batch_size*j + k];
+                for(int l=0; l<SIZE; l++)
+                    batch_image[k][l] = train_image[batch_size*j + k][l];
+            }
+
+            double error = forward(batch_image, batch_label);
+            printf("Epoch [%d/%d], Batch [%d/%d], Error: %lf \n", i+1, num_epochs, j+1, num_batches, error);
+        }
     }
 
     return 0;
