@@ -35,15 +35,11 @@ double gaussrand(){
 	return X;
 }
 
-double sigmoid(double x)
-{
+double sigmoid(double x){
      double exp_value;
      double return_value;
 
-     /*** Exponential calculation ***/
      exp_value = exp((double) -x);
-
-     /*** Final sigmoid value ***/
      return_value = 1 / (1 + exp_value);
 
      return return_value;
