@@ -35,8 +35,68 @@ double gaussrand(){
 	return X;
 }
 
+double sigmoid(double x)
+{
+     double exp_value;
+     double return_value;
+
+     /*** Exponential calculation ***/
+     exp_value = exp((double) -x);
+
+     /*** Final sigmoid value ***/
+     return_value = 1 / (1 + exp_value);
+
+     return return_value;
+}
+
 double forward(double batch_image[][SIZE], int batch_label[]){
-    double error;
+    double error = 0.0;
+
+    for(int i=0; i<batch_size; i++){
+
+        double* image;
+        image = (double*)malloc(neurons[0]*sizeof(double));
+        for(int ii=0; ii<SIZE; ii++)image[ii] = batch_image[i][ii];
+
+        for(int j=1; j<num_layers; j++){
+            double* features;
+            features = (double*)malloc(neurons[j]*sizeof(double));
+
+            for(int ii=0; ii<neurons[j]; ii++){
+                features[ii] = 0.0;
+                for(int jj=0; jj<neurons[j-1]; jj++)features[ii] += image[jj] * network.weights[j][ii][jj];
+            }
+
+            free(image);
+            image = (double*)malloc(neurons[j]*sizeof(double));
+            for(int ii=0; ii<neurons[j]; ii++)image[ii] = features[ii];
+        }
+
+        double* label;
+        label = (double*)malloc(neurons[num_layers - 1]*sizeof(double));
+        for(int ii=0; ii<neurons[num_layers - 1]; ii++){
+            if(ii == batch_label[i])label[ii] = 1.0;
+            else label[ii] = 0.0;
+        }
+
+        for(int ii=0; ii<neurons[num_layers - 1]; ii++)image[ii] = sigmoid(image[ii]);
+
+        /*
+        printf("Label: ");
+        for(int ii=0; ii<neurons[num_layers - 1]; ii++)printf("%lf ", label[ii]);
+        printf("\n");
+        printf("Predicted: ");
+        for(int ii=0; ii<neurons[num_layers - 1]; ii++)printf("%lf ", image[ii]);
+        printf("\n");
+        */
+
+        double image_error = 0.0;
+        for(int ii=0; ii<neurons[num_layers - 1]; ii++)image_error += (image[ii] - label[ii])*(image[ii] - label[ii]);
+
+        image_error = sqrt(image_error);
+
+        error += image_error;
+    }
 
     return error;
 }
