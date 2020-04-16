@@ -3,12 +3,13 @@
 #include <stdlib.h>
 
 typedef struct{
-	double ***weights; // layer x dim curr layer x dim prev layer
+    double ***weights; // layer x dim curr layer x dim prev layer
 	double **bias; // layer x dim curr layer
 
+    double ***x;
 	double ***z; // batch x layer x dim curr layer
 	double ***a; // batch x layer x dim curr layer
-	double ***delta; // batch x layer x dim curr layer
+	double ****delta; // batch x layer x dim curr layer x dim prev layer
 } network_t;
 network_t network;
 int num_layers;
@@ -54,18 +55,23 @@ double forward(double batch_image[][SIZE], int batch_label[]){
         image = (double*)malloc(neurons[0]*sizeof(double));
         for(int ii=0; ii<SIZE; ii++)image[ii] = batch_image[i][ii];
 
+        for(int ii=0; ii<neurons[0]; ii++)
+            network.x[i][0][ii] =image[ii];
+
         for(int j=1; j<num_layers; j++){
-            double* features;
-            features = (double*)malloc(neurons[j]*sizeof(double));
 
             for(int ii=0; ii<neurons[j]; ii++){
-                features[ii] = 0.0;
-                for(int jj=0; jj<neurons[j-1]; jj++)features[ii] += image[jj] * network.weights[j][ii][jj];
+                network.z[i][j][ii] = 0.0;
+                network.x[i][j][ii] = 0.0;
+                for(int jj=0; jj<neurons[j-1]; jj++){
+                    network.x[i][j][ii] += image[jj] * network.weights[j][ii][jj];
+                }
+                network.z[i][j][ii] = sigmoid(network.x[i][j][ii]);
             }
 
             free(image);
             image = (double*)malloc(neurons[j]*sizeof(double));
-            for(int ii=0; ii<neurons[j]; ii++)image[ii] = features[ii];
+            for(int ii=0; ii<neurons[j]; ii++)image[ii] = network.z[i][j][ii];
         }
 
         double* label;
@@ -75,7 +81,7 @@ double forward(double batch_image[][SIZE], int batch_label[]){
             else label[ii] = 0.0;
         }
 
-        for(int ii=0; ii<neurons[num_layers - 1]; ii++)image[ii] = sigmoid(image[ii]);
+        //for(int ii=0; ii<neurons[num_layers - 1]; ii++)image[ii] = sigmoid(image[ii]);
 
         /*
         printf("Label: ");
@@ -85,6 +91,8 @@ double forward(double batch_image[][SIZE], int batch_label[]){
         for(int ii=0; ii<neurons[num_layers - 1]; ii++)printf("%lf ", image[ii]);
         printf("\n");
         */
+        for(int ii=0; ii<neurons[num_layers - 1]; ii++)
+            network.a[i][num_layers - 1][ii] = image[ii]*(1 - image[ii])*(label[ii] - image[ii]);
 
         double image_error = 0.0;
         for(int ii=0; ii<neurons[num_layers - 1]; ii++)image_error += (image[ii] - label[ii])*(image[ii] - label[ii]);
@@ -98,21 +106,43 @@ double forward(double batch_image[][SIZE], int batch_label[]){
 }
 
 void backward(){
+    for(int i=num_layers-2; i>=1; i--){
+        for(int j=0; j<batch_size; j++){
+            for(int k=0; k<neurons[i]; k++){
+                double error_term = 0.0;
+                for(int ii=0; ii<neurons[i+1]; ii++)
+                    error_term += network.weights[i+1][ii][k]*network.a[j][i+1][ii];
 
+                network.a[j][i][k] = network.z[j][i][k]*(1 - network.z[j][i][k])*error_term;
+            }
+        }
+    }
+
+    for(int i=0; i<batch_size; i++){
+        for(int j=0; j<num_layers-1; j++){
+            for(int k=0; k<neurons[j]; k++){
+                for(int l=0; l<neurons[j+1]; l++){
+                    network.delta[i][j+1][l][k] = learning_rate*network.a[i][j+1][l]*network.x[i][j][k];
+                }
+            }
+        }
+    }
+
+    for(int j=0; j<num_layers-1; j++){
+        for(int k=0; k<neurons[j]; k++){
+            for(int l=0; l<neurons[j+1]; l++){
+                double net_delta = 0;
+                for(int i=0; i<batch_size; i++)
+                    net_delta += network.delta[i][j+1][l][k];
+                //  printf("%lf\n", net_delta);
+                network.weights[j+1][l][k] += net_delta;
+            }
+        }
+    }
 }
 
 int main(int argc, char* argv[]){
     load_mnist();
-
-    // print pixels of first data in test dataset
-    int i;
-    for (i=0; i<784; i++) {
-        printf("%1.1f ", test_image[0][i]);
-        if ((i+1) % 28 == 0) putchar('\n');
-    }
-
-    // print first label in test dataset
-    printf("label: %d\n", test_label[0]);
 
     batch_size = atoi(argv[2]);
     num_epochs = atoi(argv[1]);
@@ -147,6 +177,32 @@ int main(int argc, char* argv[]){
     			network.weights[i][j][k] = gaussrand();
     }
 
+    network.z = (double***)malloc(batch_size*sizeof(double**));
+    network.x = (double***)malloc(batch_size*sizeof(double**));
+    network.a = (double***)malloc(batch_size*sizeof(double**));
+
+    for(int i=0; i<batch_size; i++){
+        network.z[i] = (double**)malloc(num_layers*sizeof(double*));
+        network.x[i] = (double**)malloc(num_layers*sizeof(double*));
+        network.a[i] = (double**)malloc(num_layers*sizeof(double*));
+        for(int j=0; j<num_layers; j++){
+            network.z[i][j] = (double*)malloc(neurons[j]*sizeof(double));
+            network.x[i][j] = (double*)malloc(neurons[j]*sizeof(double));
+            network.a[i][j] = (double*)malloc(neurons[j]*sizeof(double));
+        }
+    }
+
+    network.delta = (double****)malloc(batch_size*sizeof(double***));
+    for(int i=0; i<batch_size; i++){
+        network.delta[i] = (double***)malloc(num_layers*sizeof(double**));
+        for(int j=1; j<num_layers; j++){
+            network.delta[i][j] = (double**)malloc(neurons[j]*sizeof(double*));
+
+            for(int k=0; k<neurons[j]; k++)
+                network.delta[i][j][k] = (double*)malloc(neurons[j-1]*sizeof(double));
+        }
+    }
+
     for(int i=0; i<num_epochs; i++){
         int num_batches = NUM_TRAIN / batch_size ;
 
@@ -161,6 +217,7 @@ int main(int argc, char* argv[]){
             }
 
             double error = forward(batch_image, batch_label);
+            backward();
             printf("Epoch [%d/%d], Batch [%d/%d], Error: %lf \n", i+1, num_epochs, j+1, num_batches, error);
         }
     }
