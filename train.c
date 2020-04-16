@@ -4,7 +4,7 @@
 
 typedef struct{
     double ***weights; // layer x dim curr layer x dim prev layer
-	double **bias; // layer x dim curr layer
+    double **bias; // layer x dim curr layer
 
     double ***x;
 	double ***z; // batch x layer x dim curr layer
