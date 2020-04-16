@@ -7,9 +7,9 @@ typedef struct{
     double **bias; // layer x dim curr layer
 
     double ***x;
-	double ***z; // batch x layer x dim curr layer
-	double ***a; // batch x layer x dim curr layer
-	double ****delta; // batch x layer x dim curr layer x dim prev layer
+    double ***z; // batch x layer x dim curr layer
+    double ***a; // batch x layer x dim curr layer
+    double ****delta; // batch x layer x dim curr layer x dim prev layer
 } network_t;
 network_t network;
 int num_layers;
