@@ -46,9 +46,9 @@ double sigmoid(double x){
      return return_value;
 }
 
-double forward(double batch_image[][SIZE], int batch_label[]){
+double forward(double batch_image[][SIZE], int batch_label[], int test){
     double error = 0.0;
-
+    double total = 0.0;
     for(int i=0; i<batch_size; i++){
 
         double* image;
@@ -81,6 +81,17 @@ double forward(double batch_image[][SIZE], int batch_label[]){
             else label[ii] = 0.0;
         }
 
+        if(test){
+            int predicted = 0;
+            double value = 0.0;
+            for(int ii=0; ii<neurons[num_layers - 1]; ii++){
+                if(image[ii] > value){
+                    value = image[ii]; predicted = ii;
+                }
+            }
+            if(predicted == batch_label[i])total += 1.0;
+        }
+
         //for(int ii=0; ii<neurons[num_layers - 1]; ii++)image[ii] = sigmoid(image[ii]);
 
         /*
@@ -102,6 +113,9 @@ double forward(double batch_image[][SIZE], int batch_label[]){
         error += image_error;
     }
 
+    if(test){
+        printf("Test Accuracy: %lf \n", (total / (double)batch_size)*100);
+    }
     return error;
 }
 
@@ -216,10 +230,29 @@ int main(int argc, char* argv[]){
                     batch_image[k][l] = train_image[batch_size*j + k][l];
             }
 
-            double error = forward(batch_image, batch_label);
+            double error = forward(batch_image, batch_label, 0);
             backward();
-            printf("Epoch [%d/%d], Batch [%d/%d], Error: %lf \n", i+1, num_epochs, j+1, num_batches, error);
+            printf("Epoch [%d/%d], Batch [%d/%d], Train Error: %lf \n", i+1, num_epochs, j+1, num_batches, error);
         }
+        printf("\n");
+
+        int num_batches_test = NUM_TEST / batch_size ;
+
+        for(int j=0; j<num_batches_test; j++){
+            double batch_image[batch_size][SIZE];
+            int batch_label[batch_size];
+
+            for(int k=0; k<batch_size; k++){
+                batch_label[k] = test_label[batch_size*j + k];
+                for(int l=0; l<SIZE; l++)
+                    batch_image[k][l] = test_image[batch_size*j + k][l];
+            }
+
+            double error = forward(batch_image, batch_label, 1);
+            backward();
+            printf("Epoch [%d/%d], Batch [%d/%d], Test Error: %lf \n", i+1, num_epochs, j+1, num_batches_test, error);
+        }
+        printf("\n");
     }
 
     return 0;
