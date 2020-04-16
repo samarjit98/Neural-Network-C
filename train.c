@@ -46,7 +46,7 @@ double sigmoid(double x){
      return return_value;
 }
 
-double forward(double batch_image[][SIZE], int batch_label[], int test, double* accuracy){
+double forward(double batch_image[][SIZE], int batch_label[], double* accuracy){
     double error = 0.0;
     double total = 0.0;
     for(int i=0; i<batch_size; i++){
@@ -81,16 +81,14 @@ double forward(double batch_image[][SIZE], int batch_label[], int test, double* 
             else label[ii] = 0.0;
         }
 
-        if(test){
-            int predicted = 0;
-            double value = 0.0;
-            for(int ii=0; ii<neurons[num_layers - 1]; ii++){
-                if(image[ii] > value){
-                    value = image[ii]; predicted = ii;
-                }
+        int predicted = 0;
+        double value = 0.0;
+        for(int ii=0; ii<neurons[num_layers - 1]; ii++){
+            if(image[ii] > value){
+                value = image[ii]; predicted = ii;
             }
-            if(predicted == batch_label[i])total += 1.0;
         }
+        if(predicted == batch_label[i])total += 1.0;
 
         //for(int ii=0; ii<neurons[num_layers - 1]; ii++)image[ii] = sigmoid(image[ii]);
 
@@ -113,10 +111,7 @@ double forward(double batch_image[][SIZE], int batch_label[], int test, double* 
         error += image_error;
     }
 
-    if(test){
-        //printf("Test Accuracy: %lf \n", (total / (double)batch_size)*100);
-        *accuracy = (total / (double)batch_size)*100;
-    }
+    *accuracy = (total / (double)batch_size)*100;
     return error;
 }
 
@@ -220,6 +215,7 @@ int main(int argc, char* argv[]){
 
     for(int i=0; i<num_epochs; i++){
         int num_batches = NUM_TRAIN / batch_size ;
+        double cumulative = 0.0;
 
         for(int j=0; j<num_batches; j++){
             double batch_image[batch_size][SIZE];
@@ -231,19 +227,21 @@ int main(int argc, char* argv[]){
                     batch_image[k][l] = train_image[batch_size*j + k][l];
             }
 
-            double error = forward(batch_image, batch_label, 0, NULL);
+            double accuracy;
+            double error = forward(batch_image, batch_label, &accuracy);
+            cumulative += accuracy;
             backward();
-            printf("Epoch [%d/%d], Batch [%d/%d], Train Error: %lf \n", i+1, num_epochs, j+1, num_batches, error);
+            printf("Epoch [%d/%d], Batch [%d/%d], Train Error: %lf, Train Accuracy: %lf perc , Cumulative: %lf perc \n", i+1, num_epochs, j+1, num_batches, error, accuracy, cumulative/(j+1));
         }
         printf("\n");
-
+        /*
         FILE* weights;
         weights = fopen("weights.dat", "wb");
         fwrite(&network, sizeof(network), 1, weights);
         fclose(weights);
-
+        */
         int num_batches_test = NUM_TEST / batch_size ;
-        double cumulative = 0.0;
+        cumulative = 0.0;
 
         for(int j=0; j<num_batches_test; j++){
             double batch_image[batch_size][SIZE];
@@ -256,9 +254,9 @@ int main(int argc, char* argv[]){
             }
             
             double accuracy;
-            double error = forward(batch_image, batch_label, 1, &accuracy);
+            double error = forward(batch_image, batch_label, &accuracy);
             cumulative += accuracy;
-            backward();
+
             printf("Epoch [%d/%d], Batch [%d/%d], Test Error: %lf, Test Accuracy: %lf perc , Cumulative: %lf perc \n", i+1, num_epochs, j+1, num_batches_test, error, accuracy, cumulative/(j+1));
         }
         printf("\n");
