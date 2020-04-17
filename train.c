@@ -10,6 +10,7 @@ typedef struct{
     double ***z; // batch x layer x dim curr layer
     double ***a; // batch x layer x dim curr layer
     double ****delta; // batch x layer x dim curr layer x dim prev layer
+    double ***delta_b; 
 } network_t;
 network_t network;
 int num_layers;
@@ -66,6 +67,7 @@ double forward(double batch_image[][SIZE], int batch_label[], double* accuracy){
                 for(int jj=0; jj<neurons[j-1]; jj++){
                     network.x[i][j][ii] += image[jj] * network.weights[j][ii][jj];
                 }
+                network.x[i][j][ii] += network.bias[j][ii];
                 network.z[i][j][ii] = sigmoid(network.x[i][j][ii]);
             }
 
@@ -132,8 +134,16 @@ void backward(){
         for(int j=0; j<num_layers-1; j++){
             for(int k=0; k<neurons[j]; k++){
                 for(int l=0; l<neurons[j+1]; l++){
-                    network.delta[i][j+1][l][k] = learning_rate*network.a[i][j+1][l]*network.x[i][j][k];
+                    network.delta[i][j+1][l][k] = learning_rate*network.a[i][j+1][l]*network.z[i][j][k];
                 }
+            }
+        }
+    }
+
+    for(int i=0; i<batch_size; i++){
+        for(int j=1; j<num_layers; j++){
+            for(int k=0; k<neurons[j]; k++){
+                network.delta_b[i][j][k] = learning_rate*network.a[i][j][k];
             }
         }
     }
@@ -147,6 +157,15 @@ void backward(){
                 //  printf("%lf\n", net_delta);
                 network.weights[j+1][l][k] += net_delta;
             }
+        }
+    }
+
+    for(int j=1; j<num_layers; j++){
+        for(int k=0; k<neurons[j]; k++){
+            double net_delta = 0;
+            for(int i=0; i<batch_size; i++)
+                net_delta += network.delta_b[i][j][k];
+            network.bias[j][k] += net_delta;
         }
     }
 }
@@ -203,10 +222,13 @@ int main(int argc, char* argv[]){
     }
 
     network.delta = (double****)malloc(batch_size*sizeof(double***));
+    network.delta_b = (double***)malloc(batch_size*sizeof(double**));
     for(int i=0; i<batch_size; i++){
         network.delta[i] = (double***)malloc(num_layers*sizeof(double**));
+        network.delta_b[i] = (double**)malloc(num_layers*sizeof(double*));
         for(int j=1; j<num_layers; j++){
             network.delta[i][j] = (double**)malloc(neurons[j]*sizeof(double*));
+            network.delta_b[i][j] = (double*)malloc(neurons[j]*sizeof(double));
 
             for(int k=0; k<neurons[j]; k++)
                 network.delta[i][j][k] = (double*)malloc(neurons[j-1]*sizeof(double));
