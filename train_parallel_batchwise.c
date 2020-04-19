@@ -120,9 +120,6 @@ void* process_batch(void* argt){
 }
 
 void forward(){
-    pthread_mutex_init(&error_lock, NULL);
-    pthread_mutex_init(&total_lock, NULL);
-
     error = 0.0;
     total = 0.0;
     pthread_t* tid;
@@ -138,9 +135,6 @@ void forward(){
     }
     free(tid);
     accuracy = (total / (double)batch_size)*100;
-
-    pthread_mutex_destroy(&error_lock); 
-    pthread_mutex_destroy(&total_lock); 
 }
 
 void backward(){
@@ -198,6 +192,8 @@ void backward(){
 
 int main(int argc, char* argv[]){
     load_mnist();
+    pthread_mutex_init(&error_lock, NULL);
+    pthread_mutex_init(&total_lock, NULL);
 
     batch_size = atoi(argv[2]);
     num_epochs = atoi(argv[1]);
@@ -308,6 +304,8 @@ int main(int argc, char* argv[]){
         }
         printf("\n");
     }
+    pthread_mutex_destroy(&error_lock); 
+    pthread_mutex_destroy(&total_lock); 
 
     return 0;
 }
