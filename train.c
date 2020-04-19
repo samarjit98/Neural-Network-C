@@ -1,12 +1,13 @@
 #include "mnist.h"
 #include <math.h>
 #include <stdlib.h>
+#include <time.h>
 
 typedef struct{
     double ***weights; // layer x dim curr layer x dim prev layer
     double **bias; // layer x dim curr layer
 
-    double ***x;
+ //   double ***x;
     double ***z; // batch x layer x dim curr layer
     double ***a; // batch x layer x dim curr layer
     double ****delta; // batch x layer x dim curr layer x dim prev layer
@@ -57,18 +58,18 @@ double forward(double batch_image[][SIZE], int batch_label[], double* accuracy){
         for(int ii=0; ii<SIZE; ii++)image[ii] = batch_image[i][ii];
 
         for(int ii=0; ii<neurons[0]; ii++)
-            network.x[i][0][ii] =image[ii];
+            network.z[i][0][ii] =image[ii];
 
         for(int j=1; j<num_layers; j++){
 
             for(int ii=0; ii<neurons[j]; ii++){
                 network.z[i][j][ii] = 0.0;
-                network.x[i][j][ii] = 0.0;
+                //network.x[i][j][ii] = 0.0;
                 for(int jj=0; jj<neurons[j-1]; jj++){
-                    network.x[i][j][ii] += image[jj] * network.weights[j][ii][jj];
+                    network.z[i][j][ii] += image[jj] * network.weights[j][ii][jj];
                 }
-                network.x[i][j][ii] += network.bias[j][ii];
-                network.z[i][j][ii] = sigmoid(network.x[i][j][ii]);
+                network.z[i][j][ii] += network.bias[j][ii];
+                network.z[i][j][ii] = sigmoid(network.z[i][j][ii]);
             }
 
             free(image);
@@ -207,16 +208,16 @@ int main(int argc, char* argv[]){
     }
 
     network.z = (double***)malloc(batch_size*sizeof(double**));
-    network.x = (double***)malloc(batch_size*sizeof(double**));
+    //network.x = (double***)malloc(batch_size*sizeof(double**));
     network.a = (double***)malloc(batch_size*sizeof(double**));
 
     for(int i=0; i<batch_size; i++){
         network.z[i] = (double**)malloc(num_layers*sizeof(double*));
-        network.x[i] = (double**)malloc(num_layers*sizeof(double*));
+        //network.x[i] = (double**)malloc(num_layers*sizeof(double*));
         network.a[i] = (double**)malloc(num_layers*sizeof(double*));
         for(int j=0; j<num_layers; j++){
             network.z[i][j] = (double*)malloc(neurons[j]*sizeof(double));
-            network.x[i][j] = (double*)malloc(neurons[j]*sizeof(double));
+            //network.x[i][j] = (double*)malloc(neurons[j]*sizeof(double));
             network.a[i][j] = (double*)malloc(neurons[j]*sizeof(double));
         }
     }
@@ -249,11 +250,13 @@ int main(int argc, char* argv[]){
                     batch_image[k][l] = train_image[batch_size*j + k][l];
             }
 
+            clock_t t;
             double accuracy;
+            t = clock();
             double error = forward(batch_image, batch_label, &accuracy);
-            cumulative += accuracy;
+            t = clock() - t;
             backward();
-            printf("Epoch [%d/%d], Batch [%d/%d], Train Error: %lf, Train Accuracy: %lf perc , Cumulative: %lf perc \n", i+1, num_epochs, j+1, num_batches, error, accuracy, cumulative/(j+1));
+            printf("Epoch [%d/%d], Batch [%d/%d], Train Error: %lf, Train Accuracy: %lf perc , Cumulative: %lf perc, Time: %lf \n", i+1, num_epochs, j+1, num_batches, error, accuracy, cumulative/(j+1), ((double)t)/CLOCKS_PER_SEC);
         }
         printf("\n");
         /*
@@ -275,11 +278,14 @@ int main(int argc, char* argv[]){
                     batch_image[k][l] = test_image[batch_size*j + k][l];
             }
             
+            clock_t t;
             double accuracy;
+            t = clock();
             double error = forward(batch_image, batch_label, &accuracy);
+            t = clock() - t;
             cumulative += accuracy;
 
-            printf("Epoch [%d/%d], Batch [%d/%d], Test Error: %lf, Test Accuracy: %lf perc , Cumulative: %lf perc \n", i+1, num_epochs, j+1, num_batches_test, error, accuracy, cumulative/(j+1));
+            printf("Epoch [%d/%d], Batch [%d/%d], Test Error: %lf, Test Accuracy: %lf perc , Cumulative: %lf perc, Time: %lf \n", i+1, num_epochs, j+1, num_batches_test, error, accuracy, cumulative/(j+1), ((double)t)/CLOCKS_PER_SEC);
         }
         printf("\n");
     }
