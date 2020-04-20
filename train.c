@@ -256,6 +256,8 @@ int main(int argc, char* argv[]){
             double error = forward(batch_image, batch_label, &accuracy);
             t = clock() - t;
             backward();
+            cumulative += accuracy;
+            
             printf("Epoch [%d/%d], Batch [%d/%d], Train Error: %lf, Train Accuracy: %lf perc , Cumulative: %lf perc, Time: %lf \n", i+1, num_epochs, j+1, num_batches, error, accuracy, cumulative/(j+1), ((double)t)/CLOCKS_PER_SEC);
         }
         printf("\n");
