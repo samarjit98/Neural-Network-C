@@ -123,7 +123,7 @@ double forward(double batch_image[][SIZE], int batch_label[], double* accuracy){
 
 void backward(){
     for(int i=num_layers-2; i>=1; i--){
-        #pragma omp parallel for 
+        #pragma omp parallel for // collapse(2)
         for(int j=0; j<batch_size; j++){
             for(int k=0; k<neurons[i]; k++){
                 double error_term = 0.0;
@@ -135,7 +135,7 @@ void backward(){
         }
     }
 
-    #pragma omp parallel for
+    #pragma omp parallel for // collapse(2)
     for(int i=0; i<batch_size; i++){
         for(int j=0; j<num_layers-1; j++){
             for(int k=0; k<neurons[j]; k++){
@@ -146,7 +146,7 @@ void backward(){
         }
     }
 
-    #pragma omp parallel for
+    #pragma omp parallel for // collapse(2)
     for(int i=0; i<batch_size; i++){
         for(int j=1; j<num_layers; j++){
             for(int k=0; k<neurons[j]; k++){
