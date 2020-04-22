@@ -53,18 +53,20 @@ double forward(double batch_image[][SIZE], int batch_label[], double* accuracy){
     double error = 0.0;
     double total = 0.0;
 
-    #pragma omp parallel for reduction( +: error,total )
+    #pragma omp parallel for reduction( +: error,total ) schedule(dynamic)
     for(int i=0; i<batch_size; i++){
 
         double* image;
         image = (double*)malloc(neurons[0]*sizeof(double));
+        //#pragma omp parallel for schedule(dynamic)
         for(int ii=0; ii<SIZE; ii++)image[ii] = batch_image[i][ii];
 
+        //#pragma omp parallel for schedule(dynamic)
         for(int ii=0; ii<neurons[0]; ii++)
             network.z[i][0][ii] =image[ii];
 
         for(int j=1; j<num_layers; j++){
-
+            //#pragma omp parallel for schedule(dynamic)
             for(int ii=0; ii<neurons[j]; ii++){
                 network.z[i][j][ii] = 0.0;
                 //network.x[i][j][ii] = 0.0;
@@ -77,11 +79,13 @@ double forward(double batch_image[][SIZE], int batch_label[], double* accuracy){
 
             free(image);
             image = (double*)malloc(neurons[j]*sizeof(double));
+            //#pragma omp parallel for schedule(dynamic)
             for(int ii=0; ii<neurons[j]; ii++)image[ii] = network.z[i][j][ii];
         }
 
         double* label;
         label = (double*)malloc(neurons[num_layers - 1]*sizeof(double));
+        //#pragma omp parallel for schedule(dynamic)
         for(int ii=0; ii<neurons[num_layers - 1]; ii++){
             if(ii == batch_label[i])label[ii] = 1.0;
             else label[ii] = 0.0;
@@ -106,6 +110,7 @@ double forward(double batch_image[][SIZE], int batch_label[], double* accuracy){
         for(int ii=0; ii<neurons[num_layers - 1]; ii++)printf("%lf ", image[ii]);
         printf("\n");
         */
+        //#pragma omp parallel for schedule(dynamic)
         for(int ii=0; ii<neurons[num_layers - 1]; ii++)
             network.a[i][num_layers - 1][ii] = image[ii]*(1 - image[ii])*(label[ii] - image[ii]);
 
@@ -123,7 +128,7 @@ double forward(double batch_image[][SIZE], int batch_label[], double* accuracy){
 
 void backward(){
     for(int i=num_layers-2; i>=1; i--){
-        #pragma omp parallel for // collapse(2)
+        #pragma omp parallel for collapse(2) schedule(dynamic)
         for(int j=0; j<batch_size; j++){
             for(int k=0; k<neurons[i]; k++){
                 double error_term = 0.0;
@@ -135,7 +140,7 @@ void backward(){
         }
     }
 
-    #pragma omp parallel for // collapse(2)
+    #pragma omp parallel for collapse(2) schedule(dynamic)
     for(int i=0; i<batch_size; i++){
         for(int j=0; j<num_layers-1; j++){
             for(int k=0; k<neurons[j]; k++){
@@ -146,7 +151,7 @@ void backward(){
         }
     }
 
-    #pragma omp parallel for // collapse(2)
+    #pragma omp parallel for collapse(2) schedule(dynamic)
     for(int i=0; i<batch_size; i++){
         for(int j=1; j<num_layers; j++){
             for(int k=0; k<neurons[j]; k++){
@@ -155,7 +160,7 @@ void backward(){
         }
     }
 
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(dynamic)
     for(int j=0; j<num_layers-1; j++){
         for(int k=0; k<neurons[j]; k++){
             for(int l=0; l<neurons[j+1]; l++){
@@ -168,7 +173,7 @@ void backward(){
         }
     }
 
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(dynamic)
     for(int j=1; j<num_layers; j++){
         for(int k=0; k<neurons[j]; k++){
             double net_delta = 0;
@@ -262,8 +267,8 @@ int main(int argc, char* argv[]){
             double accuracy;
             t = clock();
             double error = forward(batch_image, batch_label, &accuracy);
-            t = clock() - t;
             backward();
+            t = clock() - t;
             cumulative += accuracy;
             
             printf("Epoch [%d/%d], Batch [%d/%d], Train Error: %lf, Train Accuracy: %lf perc , Cumulative: %lf perc, Time: %lf \n", i+1, num_epochs, j+1, num_batches, error, accuracy, cumulative/(j+1), ((double)t)/CLOCKS_PER_SEC);
